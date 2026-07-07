@@ -52,22 +52,22 @@ func main() {
 
 Resolves `dst` (hostname or IPv4 address), sends probes, and returns aggregated statistics.
 
-| Field       | Meaning                                                              |
-| ----------- | -------------------------------------------------------------------- |
-| `Delta`     | Primary clock offset estimate: `(min1 - min2) / 2`                   |
-| `DeltaBest` | Offset estimate from the lowest-RTT sample                           |
-| `RTT`       | Smoothed round-trip time estimate                                    |
-| `RTTSigma`  | Smoothed RTT variation                                               |
+| Field       | Meaning                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| `Delta`     | Primary clock offset estimate: `(min1 - min2) / 2`                  |
+| `DeltaBest` | Offset estimate from the lowest-RTT sample                          |
+| `RTT`       | Smoothed round-trip time estimate                                   |
+| `RTTSigma`  | Smoothed RTT variation                                              |
 | `MinRTT`    | Smallest observed `delta1 + delta2` (proxy for the best RTT sample) |
 
 ### Options
 
-| Option            | Default        | Description                                                                                        |
-| ----------------- | -------------- | -------------------------------------------------------------------------------------------------- |
-| `WithMessages(n)` | `50`           | Number of valid replies to collect                                                                 |
-| `WithTrials(n)`   | `10`           | Consecutive unanswered probes before declaring the host unreachable                                  |
-| `WithMode(m)`     | ICMP Timestamp | Probe type: `ModeICMPTimestamp`, `ModeIPTimestamp` (`-o`), `ModeIPTimestamp3` (`-o1`)              |
-| `WithOnReply(fn)` | none           | Callback after each valid reply (e.g. print a progress dot)                                        |
+| Option            | Default        | Description                                                                           |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------- |
+| `WithMessages(n)` | `50`           | Number of valid replies to collect                                                    |
+| `WithTrials(n)`   | `10`           | Consecutive unanswered probes before declaring the host unreachable                   |
+| `WithMode(m)`     | ICMP Timestamp | Probe type: `ModeICMPTimestamp`, `ModeIPTimestamp` (`-o`), `ModeIPTimestamp3` (`-o1`) |
+| `WithOnReply(fn)` | none           | Callback after each valid reply (e.g. print a progress dot)                           |
 
 ### Probe send behavior
 
@@ -79,13 +79,13 @@ Resolves `dst` (hostname or IPv4 address), sends probes, and returns aggregated 
 
 There is no `sleep` between probes; the effective rate is roughly **1 / RTT** packets per second, depending on network latency.
 
-| Parameter          | Default                      | Meaning                                                                                                                                              |
-| ------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Messages`         | `50`                         | Stop after collecting this many **valid replies**. Timeouts or unmatched packets **do not** count, but each send still increments the sequence number. |
-| `Trials`           | `10`                         | Return `ErrHostDown` when `seq - acked > Trials` (this many consecutive sends with no matching reply).                                               |
-| Initial RTT guess  | `1000` ms                    | Used before the first reply arrives.                                                                                                                 |
-| Read timeout       | `max(rtt + rtt_sigma, 1)` ms | Timeout for each read; `rtt` and `rtt_sigma` are smoothed from observed round-trip times.                                                            |
-| `rangeMS`          | `1` ms                       | When a probe's RTT falls below this threshold, stop waiting for more replies to that probe and move on. The full measurement still requires `Messages` valid samples. |
+| Parameter         | Default                      | Meaning                                                                                                                                                               |
+| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Messages`        | `50`                         | Stop after collecting this many **valid replies**. Timeouts or unmatched packets **do not** count, but each send still increments the sequence number.                |
+| `Trials`          | `10`                         | Return `ErrHostDown` when `seq - acked > Trials` (this many consecutive sends with no matching reply).                                                                |
+| Initial RTT guess | `1000` ms                    | Used before the first reply arrives.                                                                                                                                  |
+| Read timeout      | `max(rtt + rtt_sigma, 1)` ms | Timeout for each read; `rtt` and `rtt_sigma` are smoothed from observed round-trip times.                                                                             |
+| `rangeMS`         | `1` ms                       | When a probe's RTT falls below this threshold, stop waiting for more replies to that probe and move on. The full measurement still requires `Messages` valid samples. |
 
 In the worst case (no replies at all), `Measure` sends at most `Trials` probes before reporting the host as down. Normally (with replies), it keeps sending until `Messages` valid samples are collected—typically at least 50 sends, more if there are timeouts.
 
@@ -93,10 +93,10 @@ This behavior matches [iputils `clockdiff.c`](https://github.com/iputils/iputils
 
 ### Errors
 
-| Error                | When it occurs                              |
-| -------------------- | ------------------------------------------- |
-| `ErrHostDown`        | Too many consecutive probes without a match |
-| `ErrHostUnreachable` | ICMP probe could not be sent                |
+| Error                | When it occurs                                          |
+| -------------------- | ------------------------------------------------------- |
+| `ErrHostDown`        | Too many consecutive probes without a match             |
+| `ErrHostUnreachable` | ICMP probe could not be sent                            |
 | `ErrNonStdTime`      | Remote timestamp has high bits set (non-RFC 792 format) |
 
 ## How it works
@@ -186,11 +186,11 @@ The original Linux `clockdiff` also offers `-o` / `-o1` modes (IP Timestamp opti
 
 ### Measurement modes
 
-| Mode                | CLI flag | Mechanism                                   |
-| ------------------- | -------- | ------------------------------------------- |
-| `ModeICMPTimestamp` | (default) | ICMP Timestamp request/reply (RFC 792)      |
-| `ModeIPTimestamp`   | `-o`     | Four-part IP Timestamp option + ICMP Echo   |
-| `ModeIPTimestamp3`  | `-o1`    | Three-part IP Timestamp option + ICMP Echo  |
+| Mode                | CLI flag  | Mechanism                                  |
+| ------------------- | --------- | ------------------------------------------ |
+| `ModeICMPTimestamp` | (default) | ICMP Timestamp request/reply (RFC 792)     |
+| `ModeIPTimestamp`   | `-o`      | Four-part IP Timestamp option + ICMP Echo  |
+| `ModeIPTimestamp3`  | `-o1`     | Three-part IP Timestamp option + ICMP Echo |
 
 IP Timestamp modes require `setsockopt(IP_OPTIONS)` and are useful when the target drops ICMP Timestamp but responds to ICMP Echo with IP options.
 
@@ -255,10 +255,78 @@ go test .
 - [clockdiff(8) man page](https://linux.die.net/man/8/clockdiff)
 - [iputils clockdiff.c](https://github.com/iputils/iputils/blob/master/clockdiff.c)
 
+## Querying NTP server time ([beevik/ntp](https://github.com/beevik/ntp))
+
+When you need the time from a **dedicated NTP server** (not an arbitrary host), use the [beevik/ntp](https://github.com/beevik/ntp) package — a simple SNTP client for Go based on [RFC 5905](https://www.rfc-editor.org/rfc/rfc5905).
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/beevik/ntp"
+)
+
+func main() {
+	// Simplest: server time as a time.Time
+	serverTime, err := ntp.Time("pool.ntp.org")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("NTP server time:", serverTime)
+
+	// Full synchronization data
+	resp, err := ntp.Query("pool.ntp.org")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("clock offset: %v  RTT: %v  stratum: %d\n",
+		resp.ClockOffset, resp.RTT, resp.Stratum)
+
+	// Apply offset to a local reading
+	corrected := time.Now().Add(resp.ClockOffset)
+	fmt.Println("corrected local time:", corrected)
+}
+```
+
+`Query` returns a `Response` with `ClockOffset`, `RTT`, `Stratum`, `RootDelay`, and other fields. Call `resp.Validate()` to check whether the response is suitable for synchronization. No raw sockets or root privileges are required — only a normal UDP connection to port 123.
+
+Install with:
+
+```bash
+go get github.com/beevik/ntp
+```
+
+## clockdiff vs [beevik/ntp](https://github.com/beevik/ntp)
+
+Both libraries estimate how far your local clock is from a remote clock, but they target different problems:
+
+| Aspect           | clockdiff (this package)                                                                | [beevik/ntp](https://github.com/beevik/ntp)                      |
+| ---------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Protocol**     | ICMP TIMESTAMP / IP Timestamp + Echo ([RFC 792](https://www.rfc-editor.org/rfc/rfc792)) | NTP / SNTP ([RFC 5905](https://www.rfc-editor.org/rfc/rfc5905))  |
+| **Target**       | Any reachable **IPv4 host** (server, router, DNS, etc.)                                 | **NTP servers** only (e.g. `pool.ntp.org`)                       |
+| **Purpose**      | Quick one-shot **offset estimate**; does not sync                                       | Clock offset and server time for **synchronization**             |
+| **Privileges**   | Raw ICMP socket — root or `CAP_NET_RAW` on Linux                                        | Standard UDP — no special privileges                             |
+| **Transport**    | ICMP (types 13/14) or ICMP Echo with IP options                                         | UDP port 123                                                     |
+| **Precision**    | Millisecond-level; affected by network asymmetry                                        | Sub-millisecond; NTP's four-timestamp algorithm                  |
+| **Availability** | Many firewalls and hosts drop ICMP Timestamp                                            | NTP servers are designed to answer queries                       |
+| **IPv6**         | Not supported                                                                           | Depends on resolver / server                                     |
+| **Extra data**   | RTT, min RTT, smoothed RTT sigma                                                        | Stratum, root delay/dispersion, leap second, kiss-of-death codes |
+
+**When to use clockdiff:** you want to know whether _a specific machine's_ clock differs from yours — for example another server in your fleet, a gateway, or a host where NTP is not running — and ICMP (or IP Timestamp echo) is allowed.
+
+**When to use beevik/ntp:** you want authoritative time from an NTP pool or stratum server, or you are building something that needs NTP-style offset/RTT data to adjust or monitor the local clock.
+
+For production time synchronization, prefer NTP (e.g. via [beevik/ntp](https://github.com/beevik/ntp) or `chrony`/`ntpd`), not ICMP-based clockdiff.
+
 ## Related tools
 
-| Tool                | Method                                      | Typical use                    |
-| ------------------- | ------------------------------------------- | ------------------------------ |
-| `clockdiff` (this package) | ICMP TIMESTAMP, IP TIMESTAMP (`-o`/`-o1`) | Quick offset estimate, no sync |
-| `ntpdate` / NTP     | NTP protocol                                | High-precision time sync       |
-| `ping`              | ICMP Echo                                   | Reachability and RTT, not skew |
+| Tool                                        | Method                                    | Typical use                    |
+| ------------------------------------------- | ----------------------------------------- | ------------------------------ |
+| `clockdiff` (this package)                  | ICMP TIMESTAMP, IP TIMESTAMP (`-o`/`-o1`) | Quick offset estimate, no sync |
+| [beevik/ntp](https://github.com/beevik/ntp) | NTP / SNTP (UDP 123)                      | Query NTP servers, sync data   |
+| `ntpdate` / NTP                             | NTP protocol                              | High-precision time sync       |
+| `ping`                                      | ICMP Echo                                 | Reachability and RTT, not skew |

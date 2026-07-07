@@ -137,7 +137,7 @@ func TestParseIPTimestampOptionNonStd(t *testing.T) {
 	}
 }
 
-	func TestTimestampFromRawBody(t *testing.T) {
+func TestTimestampFromRawBody(t *testing.T) {
 	raw := make([]byte, timestampBodyLen)
 	binary.BigEndian.PutUint16(raw[0:2], 9)
 	binary.BigEndian.PutUint16(raw[2:4], 3)

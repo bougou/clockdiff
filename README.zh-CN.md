@@ -101,7 +101,7 @@ func main() {
 
 ## 工作原理
 
-### ICMP TIMESTAMP（RFC 792）
+### ICMP TIMESTAMP (RFC 792)
 
 默认模式使用 ICMP 类型 **13**（Timestamp Request）和 **14**（Timestamp Reply）。报文体结构：
 
@@ -255,10 +255,78 @@ go test .
 - [clockdiff(8) 手册页](https://linux.die.net/man/8/clockdiff)
 - [iputils clockdiff.c](https://github.com/iputils/iputils/blob/master/clockdiff.c)
 
+## 查询 NTP 服务器时间（[beevik/ntp](https://github.com/beevik/ntp)）
+
+若需要从**专用 NTP 服务器**（而非任意主机）获取时间，可使用 [beevik/ntp](https://github.com/beevik/ntp) —— 基于 [RFC 5905](https://www.rfc-editor.org/rfc/rfc5905) 的 Go SNTP 客户端。
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/beevik/ntp"
+)
+
+func main() {
+	// 最简单：直接得到服务器时间
+	serverTime, err := ntp.Time("pool.ntp.org")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("NTP server time:", serverTime)
+
+	// 完整同步数据
+	resp, err := ntp.Query("pool.ntp.org")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("clock offset: %v  RTT: %v  stratum: %d\n",
+		resp.ClockOffset, resp.RTT, resp.Stratum)
+
+	// 将偏移量应用到本机读数
+	corrected := time.Now().Add(resp.ClockOffset)
+	fmt.Println("corrected local time:", corrected)
+}
+```
+
+`Query` 返回包含 `ClockOffset`、`RTT`、`Stratum`、`RootDelay` 等字段的 `Response`。可调用 `resp.Validate()` 判断响应是否适合用于时间同步。无需原始 socket 或 root 权限，只需通过 UDP 连接 123 端口。
+
+安装：
+
+```bash
+go get github.com/beevik/ntp
+```
+
+## clockdiff 与 [beevik/ntp](https://github.com/beevik/ntp) 的区别
+
+两个库都能估算本机时钟与远端时钟的偏差，但面向的场景不同：
+
+| 维度         | clockdiff（本包）                                                                        | [beevik/ntp](https://github.com/beevik/ntp)                      |
+| ------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **协议**     | ICMP TIMESTAMP / IP Timestamp + Echo（[RFC 792](https://www.rfc-editor.org/rfc/rfc792)） | NTP / SNTP（[RFC 5905](https://www.rfc-editor.org/rfc/rfc5905)） |
+| **目标**     | 任意可达的 **IPv4 主机**（服务器、路由器、DNS 等）                                       | 仅 **NTP 服务器**（如 `pool.ntp.org`）                           |
+| **用途**     | 快速一次性**偏移估计**，不同步时间                                                       | 获取时钟偏移与服务器时间，用于**时间同步**                       |
+| **权限**     | 原始 ICMP socket — Linux 需 root 或 `CAP_NET_RAW`                                        | 普通 UDP — 无需特殊权限                                          |
+| **传输层**   | ICMP（类型 13/14）或带 IP 选项的 ICMP Echo                                               | UDP 123 端口                                                     |
+| **精度**     | 毫秒级；受网络不对称影响较大                                                             | 亚毫秒级；NTP 四时间戳算法                                       |
+| **可用性**   | 许多防火墙和主机会丢弃 ICMP Timestamp                                                    | NTP 服务器专门用于应答查询                                       |
+| **IPv6**     | 不支持                                                                                   | 取决于解析器与服务器                                             |
+| **附加信息** | RTT、最小 RTT、平滑 RTT 波动                                                             | 层级（stratum）、根延迟/离散度、闰秒、kiss-of-death 等           |
+
+**适合用 clockdiff 的场景：** 你想知道*某台具体机器*（如同机房另一台服务器、网关、未跑 NTP 的主机）的时钟与本机相差多少，且 ICMP（或 IP Timestamp echo）可用。
+
+**适合用 beevik/ntp 的场景：** 你需要 NTP 池或 stratum 服务器的权威时间，或正在构建需要根据 NTP 偏移/RTT 调整、监控本机时钟的应用。
+
+生产环境时间同步请优先使用 NTP（如 [beevik/ntp](https://github.com/beevik/ntp) 或 `chrony`/`ntpd`），而非基于 ICMP 的 clockdiff。
+
 ## 相关工具
 
-| 工具                | 方法                                       | 典型用途                 |
-| ------------------- | ------------------------------------------ | ------------------------ |
-| `clockdiff`（本包） | ICMP TIMESTAMP、IP TIMESTAMP（`-o`/`-o1`） | 快速偏移估计，不同步     |
-| `ntpdate` / NTP     | NTP 协议                                   | 高精度时间同步           |
-| `ping`              | ICMP Echo                                  | 可达性与 RTT，非时钟偏移 |
+| 工具                                        | 方法                                       | 典型用途                  |
+| ------------------------------------------- | ------------------------------------------ | ------------------------- |
+| `clockdiff`（本包）                         | ICMP TIMESTAMP、IP TIMESTAMP（`-o`/`-o1`） | 快速偏移估计，不同步      |
+| [beevik/ntp](https://github.com/beevik/ntp) | NTP / SNTP（UDP 123）                      | 查询 NTP 服务器、同步数据 |
+| `ntpdate` / NTP                             | NTP 协议                                   | 高精度时间同步            |
+| `ping`                                      | ICMP Echo                                  | 可达性与 RTT，非时钟偏移  |
